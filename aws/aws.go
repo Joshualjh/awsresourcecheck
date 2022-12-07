@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 
@@ -87,39 +88,43 @@ func attachedGroupPolicyHasAdmin(c context.Context, client *iam.Client, group ty
 	return false, nil
 }
 
-func usersGroupsHaveAdmin(c context.Context, client *iam.Client, user types.UserDetail, admin string) (bool, error) {
+func usersGroupsHaveAdmin(c context.Context, client *iam.Client, user types.UserDetail, admin string) (string, bool, error) {
 	input := &iam.ListGroupsForUserInput{
 		UserName: user.UserName,
 	}
 
 	result, err := client.ListGroupsForUser(c, input)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
-	//그룹
-	//fmt.Println(result.Groups)
+	groupnames := ""
+	//그룹 이름 출력
+	//fmt.Println(len(*&result.Groups))
+	for i := 0; i < len(*&result.Groups); i++ {
+		groupnames += " " + *result.Groups[i].GroupName
+	}
 
 	for _, group := range result.Groups {
 		groupPolicyHasAdmin, err := groupPolicyHasAdmin(c, client, group, admin)
 		if err != nil {
-			return false, err
+			return "", false, err
 		}
 
 		if groupPolicyHasAdmin {
-			return true, nil
+			return "", true, nil
 		}
 
 		attachedGroupPolicyHasAdmin, err := attachedGroupPolicyHasAdmin(c, client, group, admin)
 		if err != nil {
-			return false, err
+			return "", false, err
 		}
 
 		if attachedGroupPolicyHasAdmin {
-			return true, nil
+			return "", true, nil
 		}
 	}
 
-	return false, nil
+	return groupnames, false, nil
 }
 
 // GetNumUsersAndAdmins determines how many users have administrator privileges.
@@ -132,9 +137,10 @@ func usersGroupsHaveAdmin(c context.Context, client *iam.Client, user types.User
 //
 //	If success, the list of users and admins, and nil.
 //	Otherwise, "", "" and an error.
-func GetNumUsersAndAdmins(c context.Context, client *iam.Client) (string, string, error) {
+func GetNumUsersAndAdmins(c context.Context, client *iam.Client) (string, string, string, error) {
 	users := ""
 	admins := ""
+	groupnamelist := ""
 
 	filters := make([]types.EntityType, 1)
 	filters[0] = types.EntityTypeUser
@@ -145,25 +151,28 @@ func GetNumUsersAndAdmins(c context.Context, client *iam.Client) (string, string
 
 	resp, err := client.GetAccountAuthorizationDetails(c, input)
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
-	fmt.Println(&resp.Policies)
+	//fmt.Println(&resp.Policies)
 
 	// The policy name that indicates administrator access
 	adminName := "AdministratorAccess"
 
 	// Wade through resulting users
 	for _, user := range resp.UserDetailList {
-		isAdmin, err := isUserAdmin(c, client, user, adminName)
+		groupnamelists, isAdmin, err := isUserAdmin(c, client, user, adminName)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
-
+		//fmt.Println(groupnamelists)
+		groupnamelist += " " + groupnamelists
 		users += " " + *user.UserName
 
 		if isAdmin {
 			admins += " " + *user.UserName
 		}
+		// fmt.Println(users)
+		// fmt.Println(groupnamelist)
 	}
 
 	for resp.IsTruncated {
@@ -174,48 +183,51 @@ func GetNumUsersAndAdmins(c context.Context, client *iam.Client) (string, string
 
 		resp, err = client.GetAccountAuthorizationDetails(c, input)
 		if err != nil {
-			return "", "", err
+			return "", "", "", err
 		}
 
 		// Wade through resulting users
 		for _, user := range resp.UserDetailList {
-			isAdmin, err := isUserAdmin(c, client, user, adminName)
+			groupnamelists, isAdmin, err := isUserAdmin(c, client, user, adminName)
 			if err != nil {
-				return "", "", err
+				return "", "", "", err
 			}
+			fmt.Println(groupnamelists)
 
 			users += " " + *user.UserName
-
+			groupnamelist += " " + groupnamelists
+			fmt.Println(users)
 			if isAdmin {
 				admins += " " + *user.UserName
 			}
 		}
 	}
 
-	return users, admins, nil
+	return groupnamelist, users, admins, nil
 }
 
-func isUserAdmin(c context.Context, client *iam.Client, user types.UserDetail, admin string) (bool, error) {
+func isUserAdmin(c context.Context, client *iam.Client, user types.UserDetail, admin string) (string, bool, error) {
 	// Check policy, attached policy, and groups (policy and attached policy)
 	policyHasAdmin := userPolicyHasAdmin(user, admin)
 	if policyHasAdmin {
-		return true, nil
+		return "", true, nil
 	}
 
 	attachedPolicyHasAdmin := attachedUserPolicyHasAdmin(user, admin)
 	if attachedPolicyHasAdmin {
-		return true, nil
+		return "", true, nil
 	}
 
-	userGroupsHaveAdmin, err := usersGroupsHaveAdmin(c, client, user, admin)
+	groupnamelist, userGroupsHaveAdmin, err := usersGroupsHaveAdmin(c, client, user, admin)
+	//fmt.Println(groupnamelist)
 	if err != nil {
-		return false, err
+		return "", false, err
 	}
 	if userGroupsHaveAdmin {
-		return true, nil
+		return "", true, nil
 	}
 
-	return false, nil
+	return groupnamelist, false, nil
 }
 
 func main() {
@@ -229,6 +241,7 @@ func main() {
 	client := ec2.NewFromConfig(cfg)
 
 	input := &ec2.DescribeInstancesInput{}
+	//fmt.Print(reflect.TypeOf(*input))
 	//ec2 인스턴스 정보 가져오기
 	result, err := GetInstances(context.TODO(), client, input)
 	if err != nil {
@@ -253,7 +266,7 @@ func main() {
 
 	client1 := iam.NewFromConfig(cfg)
 
-	users, admins, err := GetNumUsersAndAdmins(context.TODO(), client1)
+	groupnamelist, users, admins, err := GetNumUsersAndAdmins(context.TODO(), client1)
 	if err != nil {
 		fmt.Println("Got an error finding users who are admins:")
 		fmt.Println(err)
@@ -262,10 +275,16 @@ func main() {
 
 	userList := strings.Split(users, " ")
 	adminList := strings.Split(admins, " ")
+	groupnamelist = strings.Trim(groupnamelist, " ")
+	groupnameList := strings.Split(groupnamelist, " ")
+	sort.Strings(groupnameList)
 
-	fmt.Println("")
 	fmt.Println("Found", len(adminList)-1, "admin(s) out of", len(userList)-1, "user(s)")
 	fmt.Println(adminList, "user account is", userList[1], ",", userList[2])
+	for num := 0; num < len(groupnameList); num++ {
+		fmt.Print(groupnameList[num], ",")
+	}
+	fmt.Println("Number of group", len(groupnameList))
 	// showDetails := flag.Bool("d", false, "Whether to print out names of users and admins")
 	// if *showDetails {
 	// 	fmt.Println("")
