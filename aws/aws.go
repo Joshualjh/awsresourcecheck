@@ -272,19 +272,32 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-
+	users = strings.Trim(users, " ")
 	userList := strings.Split(users, " ")
+	admins = strings.Trim(admins, " ")
 	adminList := strings.Split(admins, " ")
 	groupnamelist = strings.Trim(groupnamelist, " ")
 	groupnameList := strings.Split(groupnamelist, " ")
 	sort.Strings(groupnameList)
 
-	fmt.Println("Found", len(adminList)-1, "admin(s) out of", len(userList)-1, "user(s)")
-	fmt.Println(adminList, "user account is", userList[1], ",", userList[2])
-	for num := 0; num < len(groupnameList); num++ {
-		fmt.Print(groupnameList[num], ",")
+	fmt.Println("Found", len(adminList), "admin(s) out of", len(userList), "user(s)")
+	for i := 0; i < len(adminList); i++ {
+		fmt.Println("admin list :", adminList[i])
 	}
-	fmt.Println("Number of group", len(groupnameList))
+	fmt.Println("Number of admin :", len(adminList))
+	fmt.Println("---------------------")
+	for i := 0; i < len(userList); i++ {
+		fmt.Println("user list :", userList[i])
+	}
+	fmt.Println("Number of user :", len(userList))
+	fmt.Println("---------------------")
+	//fmt.Println(adminList, "user account is", userList[1], ",", userList[2])
+	for num := 0; num < len(groupnameList); num++ {
+		fmt.Println("group list :", groupnameList[num])
+	}
+	fmt.Println("Number of group :", len(groupnameList))
+	fmt.Println("---------------------")
+
 	// showDetails := flag.Bool("d", false, "Whether to print out names of users and admins")
 	// if *showDetails {
 	// 	fmt.Println("")
