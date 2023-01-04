@@ -11,7 +11,7 @@ def Ec2StatusCheck(): # ec2 status check
             SendEc2Status(instance.id, instance.state['Name'])
 
 def SendEc2Status(id,state): ## ec2 status webhook
-    url = "https://cloocus.webhook.office.com/webhookb2/7f4b560b-bcd8-4caf-8f72-027e59ce5d9b@355deae4-a1d6-4d5e-be34-0ad0c20aaa0f/IncomingWebhook/bd0511f2b9394418ba953b04a2b992a2/255aa5e3-f570-43f6-b96c-f296572ca249"
+    url = ""
     encoded_msg =  json.dumps(
         {
             "@type": "MessageCard",
@@ -49,7 +49,7 @@ def KeyPairCheck(): ## keypair check
             SendKeyPair(i["KeyName"], len(response['KeyPairs']))
     
 def SendKeyPair(keyname, sumkey): ## keypair webhook
-    url = "https://cloocus.webhook.office.com/webhookb2/7f4b560b-bcd8-4caf-8f72-027e59ce5d9b@355deae4-a1d6-4d5e-be34-0ad0c20aaa0f/IncomingWebhook/bd0511f2b9394418ba953b04a2b992a2/255aa5e3-f570-43f6-b96c-f296572ca249"
+    url = ""
     encoded_msg =  json.dumps(
         {
             "@type": "MessageCard",
@@ -75,7 +75,7 @@ def SendKeyPair(keyname, sumkey): ## keypair webhook
     response = http.request('POST', url,headers={'Content-Type': 'application/json'} ,body=encoded_msg)
 
 def EOF(): ## daily check last webhook
-    url = "https://cloocus.webhook.office.com/webhookb2/7f4b560b-bcd8-4caf-8f72-027e59ce5d9b@355deae4-a1d6-4d5e-be34-0ad0c20aaa0f/IncomingWebhook/bd0511f2b9394418ba953b04a2b992a2/255aa5e3-f570-43f6-b96c-f296572ca249"
+    url = ""
     encoded_msg =  json.dumps(
         {
             "@type": "MessageCard",
