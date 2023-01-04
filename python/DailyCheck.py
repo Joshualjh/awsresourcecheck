@@ -38,7 +38,7 @@ def SendEc2Status(id,state): ## ec2 status webhook
 def KeyPairCheck(): ## keypair check
     ec2 = boto3.client('ec2')
     response = ec2.describe_key_pairs()
-    data = ["3tier-key221128", "colin-key", "dr-keypair", "ec2key", "testkey11","asdasdasd123"]
+    data = []
 
     for i in response['KeyPairs']:
         count = 0
